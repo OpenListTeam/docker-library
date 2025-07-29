@@ -39,7 +39,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./base
-          file: ${{ matrix.RELEASE_PLATFORM == 'linux/loong64' && 'Dockerfile.loong64' || 'Dockerfile' }}
+          file: ${{ matrix.RELEASE_PLATFORM == 'linux/loong64' && './base/Dockerfile.loong64' || './base/Dockerfile' }}
           platforms: ${{ matrix.RELEASE_PLATFORM }}
           push: false
           tags: |
