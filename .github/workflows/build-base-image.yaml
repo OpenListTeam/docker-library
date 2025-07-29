@@ -43,7 +43,6 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ matrix.tag }}
-            ${{ env.IMAGE_NAME }}:${{ matrix.platform }}-${{ matrix.tag }}
           build-args: |
             TARGETPLATFORM=${{ matrix.platform }}
             RELEASE_TAG=${{ matrix.tag }}
