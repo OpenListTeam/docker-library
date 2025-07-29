@@ -44,7 +44,6 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
           build-args: |
-            TARGETPLATFORM=${{ matrix.platform }}
             RELEASE_TAG=${{ matrix.tag }}
             INSTALL_FFMPEG=${{ matrix.tag == 'ffmpeg' || matrix.tag == 'aio' }}
             INSTALL_ARIA2=${{ matrix.tag == 'aria2' || matrix.tag == 'aio' }}
