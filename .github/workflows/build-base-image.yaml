@@ -11,7 +11,7 @@ on:
 env:
   IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-base-image' }}
   DOCKERHUB_ORG_NAME: ${{ vars.DOCKERHUB_ORG_NAME || 'openlistteam' }}
-  GHCR_ORG_NAME: ${{ vars.GHCR_ORG_NAME || 'openlistteam' }}
+  GHCR_ORG_NAME: ${{ vars.GHCR_ORG_NAME || 'multiarchstore' }}
   GHCR_REGISTRY: ghcr.io
 jobs:
   build-base-image:
