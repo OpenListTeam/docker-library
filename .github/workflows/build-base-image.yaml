@@ -5,7 +5,7 @@ on:
       image_name:
         description: 'Docker image name'
         required: false
-        default: 'openlist-base-image'
+        default: 'openlist-base'
   schedule:
     - cron: '0 20 * * *' # 每天UTC时间20点，即北京时间4点
 env:
@@ -17,7 +17,7 @@ jobs:
     # 根据`env.RRELEASE_PLATFORMS`多架构支持，且根据`env.RELEASE_TAG`标签构建
     strategy:
       matrix:
-        platform: [linux/amd64, linux/arm64, linux/arm/v7]
+        platform: [linux/amd64]
         tag: [aio, ffmpeg, aria2, base]
     steps:
       - name: Checkout code
