@@ -18,7 +18,8 @@ jobs:
     strategy:
       matrix:
         platform: [linux/amd64]
-        tag: [aio, ffmpeg, aria2, base]
+        tag: [aio]
+        #tag: [aio, ffmpeg, aria2, base]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3 
