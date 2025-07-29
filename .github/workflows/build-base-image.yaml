@@ -69,9 +69,9 @@ jobs:
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
       - name: Export digest
         run: |
-          mkdir -p ${{ runner.temp }}/digests
+          mkdir -p ${{ runner.temp }}/digests-${{ matrix.tag }}
           digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+          touch "${{ runner.temp }}/digests-${{ matrix.tag }}/${digest#sha256:}"
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
@@ -120,8 +120,11 @@ jobs:
         working-directory: ${{ runner.temp }}/digests-${{ matrix.tag }}
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+            $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
