@@ -1,4 +1,4 @@
-FROM docker.io/library/alpine:edge
+FROM ghcr.io/loong64/alpine:edge
 
 ARG TARGETPLATFORM
 ARG GITHUB_TOKEN
