@@ -31,6 +31,10 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      - name: Prepare
+        run: |
+          platform=${{ matrix.RELEASE_PLATFORM }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -47,18 +51,78 @@ jobs:
       # 如果tag为`aria2`，则构建参数为 `--build-arg INSTALL_ARIA2=true`
       # 如果tag为`base`，则不需要任何构建参数
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
+        id: build
         with:
           context: ./base
           file: ${{ matrix.RELEASE_PLATFORM == 'linux/loong64' && './base/Dockerfile.loong64' || './base/Dockerfile' }}
           platforms: ${{ matrix.RELEASE_PLATFORM }}
           push: true
           tags: |
-            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
           build-args: |
             RELEASE_TAG=${{ matrix.tag }}
             INSTALL_FFMPEG=${{ matrix.tag == 'ffmpeg' || matrix.tag == 'aio' }}
             INSTALL_ARIA2=${{ matrix.tag == 'aria2' || matrix.tag == 'aio' }}
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-      
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests-${{ matrix.tag }}
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests-${{ matrix.tag }}/${digest#sha256:}"
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.tag }}-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests-${{ matrix.tag }}/*
+          if-no-files-found: error
+          retention-days: 1
+  merge:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tag: [aio, ffmpeg, aria2, base]
+    needs:
+      - build-base-image
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests-${{ matrix.tag }}
+          pattern: digests-${{ matrix.tag }}-*
+          merge-multiple: true
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to DockerHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: | 
+             ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ matrix.tag }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests-${{ matrix.tag }}
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
