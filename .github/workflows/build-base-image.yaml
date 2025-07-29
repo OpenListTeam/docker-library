@@ -10,15 +10,15 @@ on:
     - cron: '0 20 * * *' # 每天UTC时间20点，即北京时间4点
 env:
   IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-base-image' }}
-  RRELEASE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7,linux/386,linux/arm/v6,linux/ppc64le,linux/riscv64 #linux/s390x
 jobs:
   build-base-image:
     name: Release Docker image
     runs-on: ubuntu-latest
-    # 根据`env.RRELEASE_PLATFORMS`多架构支持，且根据`env.RELEASE_TAG`标签构建
+    # 根据`env.RELEASE_PLATFORMS`多架构支持，且根据`env.RELEASE_TAG`标签构建
     strategy:
       matrix:
         tag: [aio, ffmpeg, aria2, base]
+        RELEASE_PLATFORM: ['linux/amd64', 'linux/arm64', 'linux/arm/v7', 'linux/386', 'linux/arm/v6', 'linux/ppc64le', 'linux/riscv64', 'linux/loong64'] #linux/s390x
     steps:
       - name: Checkout code
         uses: actions/checkout@v3 
@@ -26,11 +26,11 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Login to DockerHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # - name: Login to DockerHub Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
       # 如果tag为`aio`，则构建参数为 `--build-arg INSTALL_FFMPEG=true --build-arg INSTALL_ARIA2=true`
       # 如果tag为`ffmpeg`，则构建参数为 `--build-arg INSTALL_FFMPEG=true`
       # 如果tag为`aria2`，则构建参数为 `--build-arg INSTALL_ARIA2=true`
@@ -39,12 +39,14 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./base
-          platforms: ${{ env.RRELEASE_PLATFORMS }}
-          push: true
+          file: ${{ matrix.RELEASE_PLATFORM == 'linux/loong64' && 'Dockerfile.loong64' || 'Dockerfile' }}
+          platforms: ${{ matrix.RELEASE_PLATFORM }}
+          push: false
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
+            ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
           build-args: |
             RELEASE_TAG=${{ matrix.tag }}
             INSTALL_FFMPEG=${{ matrix.tag == 'ffmpeg' || matrix.tag == 'aio' }}
             INSTALL_ARIA2=${{ matrix.tag == 'aria2' || matrix.tag == 'aio' }}
+            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
       
