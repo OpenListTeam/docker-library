@@ -42,7 +42,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ matrix.tag }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
           build-args: |
             TARGETPLATFORM=${{ matrix.platform }}
             RELEASE_TAG=${{ matrix.tag }}
