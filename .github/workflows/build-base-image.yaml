@@ -59,7 +59,6 @@ jobs:
           platforms: ${{ matrix.RELEASE_PLATFORM }}
           push: true
           tags: |
-            # ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
           build-args: |
             RELEASE_TAG=${{ matrix.tag }}
@@ -111,7 +110,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: | 
-            #  ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ matrix.tag }}
@@ -119,12 +117,9 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests-${{ matrix.tag }}
         run: |
-          # docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-          #   $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          # docker buildx imagetools inspect ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
           docker buildx imagetools inspect ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
