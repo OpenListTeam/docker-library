@@ -10,6 +10,7 @@ on:
     - cron: '0 20 * * *' # 每天UTC时间20点，即北京时间4点
 env:
   IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-base-image' }}
+  RRELEASE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7,linux/386,linux/arm/v6,linux/s390x,linux/ppc64le,linux/riscv64
 jobs:
   build-base-image:
     name: Release Docker image
@@ -17,7 +18,6 @@ jobs:
     # 根据`env.RRELEASE_PLATFORMS`多架构支持，且根据`env.RELEASE_TAG`标签构建
     strategy:
       matrix:
-        platform: [linux/amd64,linux/arm64,linux/arm/v7,linux/386,linux/arm/v6,linux/s390x,linux/ppc64le,linux/riscv64]
         tag: [aio, ffmpeg, aria2, base]
     steps:
       - name: Checkout code
@@ -39,7 +39,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./base
-          platforms: ${{ matrix.platform }}
+          platforms: ${{ env.RRELEASE_PLATFORMS }}
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
