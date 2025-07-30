@@ -8,213 +8,221 @@ on:
         default: 'openlist-base-image'
   schedule:
     - cron: '0 20 * * *' # 每天UTC时间20点，即北京时间4点
+
 env:
   IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-base-image' }}
   DOCKERHUB_ORG_NAME: ${{ vars.DOCKERHUB_ORG_NAME || 'openlistteam' }}
   GHCR_ORG_NAME: ${{ vars.GHCR_ORG_NAME || 'openlistteam' }}
   GHCR_REGISTRY: ghcr.io
+  RELEASE_PLATFORMS: 'linux/amd64,linux/arm64,linux/arm/v7,linux/386,linux/arm/v6,linux/ppc64le,linux/riscv64'
+  LOONG64_PLATFORM: 'linux/loong64'
+
+permissions:
+  packages: write
+
 jobs:
+  # 构建除龙芯外的所有架构
   build-base-image:
-    name: Build ${{ matrix.tag }} for ${{ matrix.RELEASE_PLATFORM }}
-    permissions:
-      packages: write
-      contents: read
+    name: Build Base Docker Image (Multi-arch)
     runs-on: ubuntu-latest
-    timeout-minutes: 120
     strategy:
-      max-parallel: 8
       matrix:
-        tag: [aio, ffmpeg, aria2, base]
-        RELEASE_PLATFORM: ['linux/amd64', 'linux/arm64', 'linux/arm/v7', 'linux/386', 'linux/arm/v6', 'linux/ppc64le', 'linux/riscv64', 'linux/loong64'] #linux/s390x
+        image: ["base", "ffmpeg", "aria2", "aio"]
+        include:
+          - image: "base"
+            build_arg: ""
+          - image: "ffmpeg"
+            build_arg: INSTALL_FFMPEG=true
+          - image: "aria2"
+            build_arg: INSTALL_ARIA2=true
+          - image: "aio"
+            build_arg: |
+              INSTALL_FFMPEG=true
+              INSTALL_ARIA2=true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-        
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            network=host
-            
-      - name: Prepare
-        run: |
-          platform=${{ matrix.RELEASE_PLATFORM }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Login to DockerHub Container Registry
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          
-      # 如果tag为`aio`，则构建参数为 `--build-arg INSTALL_FFMPEG=true --build-arg INSTALL_ARIA2=true`
-      # 如果tag为`ffmpeg`，则构建参数为 `--build-arg INSTALL_FFMPEG=true`
-      # 如果tag为`aria2`，则构建参数为 `--build-arg INSTALL_ARIA2=true`
-      # 如果tag为`base`，则不需要任何构建参数
-      - name: Build and push Docker image
+
+      - name: Build and push Docker image (Multi-arch)
         uses: docker/build-push-action@v6
         id: build
         with:
           context: ./base
-          file: ${{ matrix.RELEASE_PLATFORM == 'linux/loong64' && './base/Dockerfile.loong64' || './base/Dockerfile' }}
-          platforms: ${{ matrix.RELEASE_PLATFORM }}
+          file: ./base/Dockerfile
           push: true
           pull: true
           no-cache: true
+          build-args: ${{ matrix.build_arg }}
           tags: |
-            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
-          build-args: |
-            RELEASE_TAG=${{ matrix.tag }}
-            INSTALL_FFMPEG=${{ matrix.tag == 'ffmpeg' || matrix.tag == 'aio' }}
-            INSTALL_ARIA2=${{ matrix.tag == 'aria2' || matrix.tag == 'aio' }}
-            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
+          platforms: ${{ env.RELEASE_PLATFORMS }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-          
+
       - name: Export digest
         run: |
-          mkdir -p ${{ runner.temp }}/digests-${{ matrix.tag }}
+          mkdir -p ${{ runner.temp }}/digests-${{ matrix.image }}
           digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests-${{ matrix.tag }}/${digest#sha256:}"
-          
+          touch "${{ runner.temp }}/digests-${{ matrix.image }}/${digest#sha256:}"
+
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.tag }}-${{ env.PLATFORM_PAIR }}
-          path: ${{ runner.temp }}/digests-${{ matrix.tag }}/*
+          name: digests-${{ matrix.image }}-multiarch
+          path: ${{ runner.temp }}/digests-${{ matrix.image }}/*
           if-no-files-found: error
           retention-days: 1
-          
-      - name: Build summary
-        if: always()
-        run: |
-          if [[ "${{ steps.build.outcome }}" == "success" ]]; then
-            echo "✅ Successfully built ${{ matrix.tag }} for ${{ matrix.RELEASE_PLATFORM }}" >> $GITHUB_STEP_SUMMARY
-            echo "📦 Image digest: ${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Failed to build ${{ matrix.tag }} for ${{ matrix.RELEASE_PLATFORM }}" >> $GITHUB_STEP_SUMMARY
-          fi
-  merge:
-    name: Merge ${{ matrix.tag }} manifests
+
+  # 单独构建龙芯架构
+  build-loong64:
+    name: Build Base Docker Image (LoongArch64)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      packages: write
-      contents: read
     strategy:
       matrix:
-        tag: [aio, ffmpeg, aria2, base]
-    needs:
-      - build-base-image
-    if: always() && needs.build-base-image.result != 'cancelled'
+        image: ["base", "ffmpeg", "aria2", "aio"]
+        include:
+          - image: "base"
+            build_arg: ""
+          - image: "ffmpeg"
+            build_arg: INSTALL_FFMPEG=true
+          - image: "aria2"
+            build_arg: INSTALL_ARIA2=true
+          - image: "aio"
+            build_arg: |
+              INSTALL_FFMPEG=true
+              INSTALL_ARIA2=true
     steps:
-      - name: Download digests
-        uses: actions/download-artifact@v4
-        with:
-          path: ${{ runner.temp }}/digests-${{ matrix.tag }}
-          pattern: digests-${{ matrix.tag }}-*
-          merge-multiple: true
-          
-      - name: Check if digests exist
-        id: check_digests
-        run: |
-          if [ -d "${{ runner.temp }}/digests-${{ matrix.tag }}" ] && [ "$(ls -A ${{ runner.temp }}/digests-${{ matrix.tag }})" ]; then
-            echo "has_digests=true" >> $GITHUB_OUTPUT
-            echo "Found digests for ${{ matrix.tag }}"
-            ls -la ${{ runner.temp }}/digests-${{ matrix.tag }}
-          else
-            echo "has_digests=false" >> $GITHUB_OUTPUT
-            echo "No digests found for ${{ matrix.tag }}, skipping merge"
-          fi
-          
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to GitHub Container Registry
-        if: steps.check_digests.outputs.has_digests == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Login to DockerHub Container Registry
-        if: steps.check_digests.outputs.has_digests == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          
-      - name: Set up Docker Buildx
-        if: steps.check_digests.outputs.has_digests == 'true'
-        uses: docker/setup-buildx-action@v3
-        
-      - name: Docker meta
-        if: steps.check_digests.outputs.has_digests == 'true'
-        id: meta
-        uses: docker/metadata-action@v5
+
+      - name: Build and push Docker image (LoongArch64)
+        uses: docker/build-push-action@v6
+        id: build
         with:
-          images: | 
-             ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
-             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
+          context: ./base
+          file: ./base/Dockerfile.loong64
+          push: true
+          pull: true
+          no-cache: true
+          build-args: ${{ matrix.build_arg }}
           tags: |
-            type=raw,value=${{ matrix.tag }}
-            
-      - name: Create manifest list and push
-        if: steps.check_digests.outputs.has_digests == 'true'
-        working-directory: ${{ runner.temp }}/digests-${{ matrix.tag }}
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
+          platforms: ${{ env.LOONG64_PLATFORM }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
         run: |
-          echo "🔍 Debug: Available digests:"
+          mkdir -p ${{ runner.temp }}/digests-${{ matrix.image }}
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests-${{ matrix.image }}/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.image }}-loong64
+          path: ${{ runner.temp }}/digests-${{ matrix.image }}/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # 合并所有架构的manifest
+  merge:
+    name: Merge ${{ matrix.image }} manifests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: ["base", "ffmpeg", "aria2", "aio"]
+    needs:
+      - build-base-image
+      - build-loong64
+    steps:
+      - name: Download digests (Multi-arch)
+        uses: actions/download-artifact@v4
+        with:
+          name: digests-${{ matrix.image }}-multiarch
+          path: ${{ runner.temp }}/digests-${{ matrix.image }}
+
+      - name: Download digests (LoongArch64)
+        uses: actions/download-artifact@v4
+        with:
+          name: digests-${{ matrix.image }}-loong64
+          path: ${{ runner.temp }}/digests-${{ matrix.image }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests-${{ matrix.image }}
+        run: |
+          echo "🔍 Available digests for ${{ matrix.image }}:"
           ls -la
-          echo "🔍 Debug: Metadata output:"
-          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq .
-          
-          # Extract tags for DockerHub and GHCR separately
-          DOCKERHUB_TAGS=$(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_ORG_NAME }}")) | "-t " + .) | join(" ")')
-          GHCR_TAGS=$(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -cr '.tags | map(select(startswith("${{ env.GHCR_REGISTRY }}")) | "-t " + .) | join(" ")')
-          
-          echo "🔍 Debug: DockerHub tags: $DOCKERHUB_TAGS"
-          echo "🔍 Debug: GHCR tags: $GHCR_TAGS"
           
           # Create manifest for DockerHub
-          if [ -n "$DOCKERHUB_TAGS" ]; then
-            echo "📦 Creating DockerHub manifest..."
-            docker buildx imagetools create $DOCKERHUB_TAGS \
-              $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
-          fi
+          echo "📦 Creating DockerHub manifest for ${{ matrix.image }}..."
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }} \
+            $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
           
-          # Create manifest for GHCR (with error handling)
-          if [ -n "$GHCR_TAGS" ]; then
-            echo "📦 Creating GHCR manifest..."
-            if ! docker buildx imagetools create $GHCR_TAGS \
-              $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *); then
-              echo "⚠️ Warning: Failed to create GHCR manifest, but continuing..."
-              echo "This might be due to permissions or GHCR configuration issues"
-            fi
-          fi
-            
+          # Create manifest for GHCR
+          echo "📦 Creating GHCR manifest for ${{ matrix.image }}..."
+          docker buildx imagetools create \
+            -t ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }} \
+            $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
       - name: Inspect image
-        if: steps.check_digests.outputs.has_digests == 'true'
         run: |
           echo "🔍 Inspecting DockerHub image..."
-          docker buildx imagetools inspect ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
           echo "🔍 Inspecting GHCR image..."
-          docker buildx imagetools inspect ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-          
-      - name: Merge summary
-        if: always()
-        run: |
-          if [[ "${{ steps.check_digests.outputs.has_digests }}" == "true" ]]; then
-            echo "✅ Successfully merged manifests for ${{ matrix.tag }}" >> $GITHUB_STEP_SUMMARY
-            echo "🐳 DockerHub: ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}" >> $GITHUB_STEP_SUMMARY
-            echo "📦 GHCR: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⏭️ Skipped merging manifests for ${{ matrix.tag }} (no digests found)" >> $GITHUB_STEP_SUMMARY
-          fi
+          docker buildx imagetools inspect ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
