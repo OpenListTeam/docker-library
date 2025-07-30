@@ -73,8 +73,8 @@ jobs:
           no-cache: true
           build-args: ${{ matrix.build_arg }}
           tags: |
-            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
           platforms: ${{ env.RELEASE_PLATFORMS }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
 
@@ -144,8 +144,8 @@ jobs:
           no-cache: true
           build-args: ${{ matrix.build_arg }}
           tags: |
-            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
           platforms: ${{ env.LOONG64_PLATFORM }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
 
