@@ -64,7 +64,7 @@ jobs:
           # 为 loong64 单独指定 Dockerfile
           file: ${{ matrix.RELEASE_PLATFORM == 'linux/loong64' && './base/Dockerfile.loong64' || './base/Dockerfile' }}
           platforms: ${{ matrix.RELEASE_PLATFORM }}
-          push: true
+          push: false
           # 临时标签：包含 tag + 平台（避免冲突）
           tags: |
             ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}-${{ env.PLATFORM_PAIR }}
