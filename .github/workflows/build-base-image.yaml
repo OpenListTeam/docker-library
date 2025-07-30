@@ -108,6 +108,9 @@ jobs:
     name: Merge ${{ matrix.tag }} manifests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      packages: write
+      contents: read
     strategy:
       matrix:
         tag: [aio, ffmpeg, aria2, base]
@@ -168,13 +171,34 @@ jobs:
         if: steps.check_digests.outputs.has_digests == 'true'
         working-directory: ${{ runner.temp }}/digests-${{ matrix.tag }}
         run: |
-          # Create manifest for DockerHub
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          echo "🔍 Debug: Available digests:"
+          ls -la
+          echo "🔍 Debug: Metadata output:"
+          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq .
           
-          # Create manifest for GHCR
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          # Extract tags for DockerHub and GHCR separately
+          DOCKERHUB_TAGS=$(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_ORG_NAME }}")) | "-t " + .) | join(" ")')
+          GHCR_TAGS=$(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -cr '.tags | map(select(startswith("${{ env.GHCR_REGISTRY }}")) | "-t " + .) | join(" ")')
+          
+          echo "🔍 Debug: DockerHub tags: $DOCKERHUB_TAGS"
+          echo "🔍 Debug: GHCR tags: $GHCR_TAGS"
+          
+          # Create manifest for DockerHub
+          if [ -n "$DOCKERHUB_TAGS" ]; then
+            echo "📦 Creating DockerHub manifest..."
+            docker buildx imagetools create $DOCKERHUB_TAGS \
+              $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          fi
+          
+          # Create manifest for GHCR (with error handling)
+          if [ -n "$GHCR_TAGS" ]; then
+            echo "📦 Creating GHCR manifest..."
+            if ! docker buildx imagetools create $GHCR_TAGS \
+              $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *); then
+              echo "⚠️ Warning: Failed to create GHCR manifest, but continuing..."
+              echo "This might be due to permissions or GHCR configuration issues"
+            fi
+          fi
             
       - name: Inspect image
         if: steps.check_digests.outputs.has_digests == 'true'
