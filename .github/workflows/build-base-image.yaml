@@ -8,153 +8,120 @@ on:
         default: 'openlist-base-image'
   schedule:
     - cron: '0 20 * * *' # 每天UTC时间20点，即北京时间4点
-
 env:
   IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-base-image' }}
   DOCKERHUB_ORG_NAME: ${{ vars.DOCKERHUB_ORG_NAME || 'openlistteam' }}
   GHCR_ORG_NAME: ${{ vars.GHCR_ORG_NAME || 'openlistteam' }}
   GHCR_REGISTRY: ghcr.io
-
 jobs:
   build-base-image:
-    name: Build per-arch images
+    name: Release Docker image
     permissions:
       packages: write
     runs-on: ubuntu-latest
+    # 根据`env.RELEASE_PLATFORMS`多架构支持，且根据`env.RELEASE_TAG`标签构建
     strategy:
       matrix:
         tag: [aio, ffmpeg, aria2, base]
-        RELEASE_PLATFORM: ['linux/amd64', 'linux/arm64', 'linux/arm/v7', 'linux/386', 'linux/arm/v6', 'linux/ppc64le', 'linux/riscv64', 'linux/loong64']
+        RELEASE_PLATFORM: ['linux/amd64', 'linux/arm64', 'linux/arm/v7', 'linux/386', 'linux/arm/v6', 'linux/ppc64le', 'linux/riscv64', 'linux/loong64'] #linux/s390x
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # 升级到最新版
-
+        uses: actions/checkout@v3 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3 # 升级到最新版，支持更多架构
-
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Prepare platform info
+      - name: Prepare
         run: |
-          # 处理平台名称（替换斜线为横线，用于标签）
           platform=${{ matrix.RELEASE_PLATFORM }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          # 输出当前构建的 tag 和平台（便于调试）
-          echo "Building tag: ${{ matrix.tag }}, platform: $platform"
-
-      - name: Login to GHCR
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Login to DockerHub
+      - name: Login to DockerHub Container Registry
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_ORG_NAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push per-arch image
+      # 如果tag为`aio`，则构建参数为 `--build-arg INSTALL_FFMPEG=true --build-arg INSTALL_ARIA2=true`
+      # 如果tag为`ffmpeg`，则构建参数为 `--build-arg INSTALL_FFMPEG=true`
+      # 如果tag为`aria2`，则构建参数为 `--build-arg INSTALL_ARIA2=true`
+      # 如果tag为`base`，则不需要任何构建参数
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         id: build
         with:
           context: ./base
-          # 为 loong64 单独指定 Dockerfile
           file: ${{ matrix.RELEASE_PLATFORM == 'linux/loong64' && './base/Dockerfile.loong64' || './base/Dockerfile' }}
           platforms: ${{ matrix.RELEASE_PLATFORM }}
           push: true
-          # 临时标签：包含 tag + 平台（避免冲突）
           tags: |
-            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}-${{ env.PLATFORM_PAIR }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}-${{ env.PLATFORM_PAIR }}
-          # 构建参数：按 tag 动态设置依赖
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
           build-args: |
             RELEASE_TAG=${{ matrix.tag }}
             INSTALL_FFMPEG=${{ matrix.tag == 'ffmpeg' || matrix.tag == 'aio' }}
             INSTALL_ARIA2=${{ matrix.tag == 'aria2' || matrix.tag == 'aio' }}
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          # 输出 digest 用于后续合并
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-
       - name: Export digest
         run: |
-          # 按 tag 存储 digest（格式：sha256:xxx -> 仅保留哈希部分）
-          digest_dir="${{ runner.temp }}/digests/${{ matrix.tag }}"
-          mkdir -p $digest_dir
-          echo "${{ steps.build.outputs.digest }}" | cut -d: -f2 > "$digest_dir/${{ env.PLATFORM_PAIR }}"
-
+          mkdir -p ${{ runner.temp }}/digests-${{ matrix.tag }}
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests-${{ matrix.tag }}/${digest#sha256:}"
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.tag }}
-          path: ${{ runner.temp }}/digests/${{ matrix.tag }}/**
+          name: digests-${{ matrix.tag }}-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests-${{ matrix.tag }}/*
           if-no-files-found: error
           retention-days: 1
-
-  merge-manifests:
-    name: Merge to multi-arch manifest
+  merge:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         tag: [aio, ffmpeg, aria2, base]
-    needs: build-base-image
+    needs:
+      - build-base-image
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          name: digests-${{ matrix.tag }}
-          path: ${{ runner.temp }}/digests/${{ matrix.tag }}
-
-      - name: Login to GHCR
+          path: ${{ runner.temp }}/digests-${{ matrix.tag }}
+          pattern: digests-${{ matrix.tag }}-*
+          merge-multiple: true
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Login to DockerHub
+      - name: Login to DockerHub Container Registry
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_ORG_NAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Generate manifest tags
+      - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
+          images: | 
+             ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ matrix.tag }}
-
-      - name: Create and push multi-arch manifest
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests-${{ matrix.tag }}
         run: |
-          # 收集所有平台的 digest（按平台名匹配）
-          digest_dir="${{ runner.temp }}/digests/${{ matrix.tag }}"
-          declare -a dockerhub_images=()
-          declare -a ghcr_images=()
-
-          # 遍历所有平台的 digest 文件
-          for platform in $(ls $digest_dir); do
-            digest=$(cat "$digest_dir/$platform")
-            # DockerHub 镜像：使用临时标签的 digest
-            dockerhub_images+=("${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:$digest")
-            # GHCR 镜像：同理
-            ghcr_images+=("${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:$digest")
-          done
-
-          # 为 DockerHub 创建并推送 manifest
-          docker buildx imagetools create \
-            -t ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }} \
-            "${dockerhub_images[@]}"
-
-          # 为 GHCR 创建并推送 manifest
-          docker buildx imagetools create \
-            -t ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }} \
-            "${ghcr_images[@]}"
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *) \
+            $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
