@@ -69,9 +69,7 @@ jobs:
           push: true
           pull: true
           no-cache: true
-          build-args: |
-            ${{ matrix.build_arg }}
-            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          build-args: ${{ matrix.build_arg }}
           tags: |
             ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
@@ -140,9 +138,7 @@ jobs:
           push: true
           pull: true
           no-cache: true
-          build-args: |
-            ${{ matrix.build_arg }}
-            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          build-args: ${{ matrix.build_arg }}
           tags: |
             ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
