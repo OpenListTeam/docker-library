@@ -32,13 +32,11 @@ jobs:
           - image: "base"
             build_arg: ""
           - image: "ffmpeg"
-            build_arg: INSTALL_FFMPEG=true
+            build_arg: "INSTALL_FFMPEG=true"
           - image: "aria2"
-            build_arg: INSTALL_ARIA2=true
+            build_arg: "INSTALL_ARIA2=true"
           - image: "aio"
-            build_arg: |
-              INSTALL_FFMPEG=true
-              INSTALL_ARIA2=true
+            build_arg: "INSTALL_FFMPEG=true\nINSTALL_ARIA2=true"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -103,13 +101,11 @@ jobs:
           - image: "base"
             build_arg: ""
           - image: "ffmpeg"
-            build_arg: INSTALL_FFMPEG=true
+            build_arg: "INSTALL_FFMPEG=true"
           - image: "aria2"
-            build_arg: INSTALL_ARIA2=true
+            build_arg: "INSTALL_ARIA2=true"
           - image: "aio"
-            build_arg: |
-              INSTALL_FFMPEG=true
-              INSTALL_ARIA2=true
+            build_arg: "INSTALL_FFMPEG=true\nINSTALL_ARIA2=true"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
