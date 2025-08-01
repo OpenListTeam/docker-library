@@ -21,7 +21,7 @@ RUN echo "🔍 Build args: INSTALL_FFMPEG=$INSTALL_FFMPEG, INSTALL_ARIA2=$INSTAL
         echo "📦 Installing Aria2..." && \
         apk add --no-cache curl aria2 && \
         mkdir -p /opt/aria2/.aria2 && \
-        curl -fsSL --retry 3 https://codeload.github.com/P3TERX/aria2.conf/tar.gz/refs/heads/master -O /tmp/aria-conf.tar.gz && \
+        curl -fsSL --retry 3 https://codeload.github.com/P3TERX/aria2.conf/tar.gz/refs/heads/master -o /tmp/aria-conf.tar.gz && \
         tar -zxvf /tmp/aria-conf.tar.gz -C /opt/aria2/.aria2 --strip-components=1 && rm -f /tmp/aria-conf.tar.gz && \
         sed -i 's|rpc-secret|#rpc-secret|g' /opt/aria2/.aria2/aria2.conf && \
         sed -i 's|/root/.aria2|/opt/aria2/.aria2|g' /opt/aria2/.aria2/aria2.conf && \
