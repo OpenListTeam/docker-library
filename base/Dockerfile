@@ -37,7 +37,7 @@ RUN echo "🔍 Build args: INSTALL_FFMPEG=$INSTALL_FFMPEG, INSTALL_ARIA2=$INSTAL
         echo 'exec svlogd /opt/openlist/data/log/aria2' >> /opt/service/stop/aria2/log/run && \
         chmod +x /opt/service/stop/aria2/run /opt/service/stop/aria2/log/run && \
         touch /opt/aria2/.aria2/aria2.session && \
-        (/opt/aria2/.aria2/tracker.sh || echo "⚠️  Tracker update failed, continuing..."); \
+        ARIA2_CONF=/opt/aria2/.aria2/aria2.conf /opt/aria2/.aria2/tracker.sh; \
     else \
         echo "⏭️  Skipping Aria2 installation"; \
     fi && \
