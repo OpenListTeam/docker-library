@@ -48,4 +48,5 @@ RUN mkdir -p /opt/service/start/openlist && \
     echo 'exec 2>&1' >> /opt/service/start/openlist/run && \
     echo 'cd /opt/openlist' >> /opt/service/start/openlist/run && \
     echo 'exec ./openlist server --no-prefix' >> /opt/service/start/openlist/run && \
-    chmod +x /opt/service/start/openlist/run
+    chmod +x /opt/service/start/openlist/run && \
+    chmod -R 777 /opt/service
