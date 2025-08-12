@@ -6,7 +6,6 @@ ARG INSTALL_ARIA2=false
 LABEL MAINTAINER="OpenList"
 
 WORKDIR /opt/openlist/
-
 RUN echo "🔍 Build args: INSTALL_FFMPEG=$INSTALL_FFMPEG, INSTALL_ARIA2=$INSTALL_ARIA2" && \
     apk update && \
     apk upgrade --no-cache && \
@@ -42,10 +41,12 @@ RUN echo "🔍 Build args: INSTALL_FFMPEG=$INSTALL_FFMPEG, INSTALL_ARIA2=$INSTAL
         echo "⏭️  Skipping Aria2 installation"; \
     fi && \
     rm -rf /var/cache/apk/*
-    
-RUN mkdir -p /opt/service/start/openlist && \
-    echo '#!/bin/sh' > /opt/service/start/openlist/run && \
-    echo 'exec 2>&1' >> /opt/service/start/openlist/run && \
-    echo 'cd /opt/openlist' >> /opt/service/start/openlist/run && \
-    echo 'exec ./openlist server --no-prefix' >> /opt/service/start/openlist/run && \
-    chmod +x /opt/service/start/openlist/run
+
+RUN mkdir -p /opt/service/start && chmod 777 /opt/service/start && \ 
+    mkdir -p /opt/service/stop/openlist && \
+    echo '#!/bin/sh' > /opt/service/stop/openlist/run && \
+    echo 'exec 2>&1' >> /opt/service/stop/openlist/run && \
+    echo 'cd /opt/openlist' >> /opt/service/stop/openlist/run && \
+    echo 'exec ./openlist server --no-prefix' >> /opt/service/stop/openlist/run && \
+    chmod +x /opt/service/stop/openlist/run
+
