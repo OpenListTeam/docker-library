@@ -39,25 +39,25 @@ jobs:
           - name: linux-amd64
             platforms: linux/amd64
             dockerfile: ./aria2/Dockerfile
-          - name: linux-arm64
-            platforms: linux/arm64
-            dockerfile: ./aria2/Dockerfile
-          - name: linux-arm-v7
-            platforms: linux/arm/v7
-            dockerfile: ./aria2/Dockerfile
-          - name: linux-386
-            platforms: linux/386
-            dockerfile: ./aria2/Dockerfile
-          - name: linux-arm-v6
-            platforms: linux/arm/v6
-            dockerfile: ./aria2/Dockerfile
-          - name: linux-ppc64le
-            platforms: linux/ppc64le
-            dockerfile: ./aria2/Dockerfile
-          - name: linux-riscv64
-            platforms: linux/riscv64
-            dockerfile: ./aria2/Dockerfile
-          - name: linux-loong64
+          # - name: linux-arm64
+          #   platforms: linux/arm64
+          #   dockerfile: ./aria2/Dockerfile
+          # - name: linux-arm-v7
+          #   platforms: linux/arm/v7
+          #   dockerfile: ./aria2/Dockerfile
+          # - name: linux-386
+          #   platforms: linux/386
+          #   dockerfile: ./aria2/Dockerfile
+          # - name: linux-arm-v6
+          #   platforms: linux/arm/v6
+          #   dockerfile: ./aria2/Dockerfile
+          # - name: linux-ppc64le
+          #   platforms: linux/ppc64le
+          #   dockerfile: ./aria2/Dockerfile
+          # - name: linux-riscv64
+          #   platforms: linux/riscv64
+          #   dockerfile: ./aria2/Dockerfile
+          # - name: linux-loong64
             platforms: linux/loong64
             dockerfile: ./aria2/Dockerfile.loong64
 
