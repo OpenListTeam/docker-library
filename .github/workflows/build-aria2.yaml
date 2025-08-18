@@ -10,10 +10,18 @@ on:
         description: 'Aria2 version'
         required: false
         default: '1.37.0'
+      DOCKERHUB_ORG_NAME:
+        description: 'DockerHub organization name'
+        required: false
+        default: ''
+      GHCR_ORG_NAME:
+        description: 'GitHub Container Registry organization name'
+        required: false
+        default: ''
 env:
   IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-aria2' }}
-  DOCKERHUB_ORG_NAME: ${{ vars.DOCKERHUB_ORG_NAME || 'openlistteam' }}
-  GHCR_ORG_NAME: ${{ vars.GHCR_ORG_NAME || 'openlistteam' }}
+  DOCKERHUB_ORG_NAME: ${{ github.event.inputs.dockerhub_org_name || github.repository_owner }}
+  GHCR_ORG_NAME: ${{ github.event.inputs.ghcr_org_name || github.repository_owner }}
   GHCR_REGISTRY: ghcr.io
   RELEASE_PLATFORMS: 'linux/amd64,linux/arm64,linux/arm/v7,linux/386,linux/arm/v6,linux/ppc64le,linux/riscv64'
   LOONG64_PLATFORM: 'linux/loong64'
