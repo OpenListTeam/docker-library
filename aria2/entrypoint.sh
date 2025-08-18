@@ -1,13 +1,16 @@
 #!/bin/sh
-
+# create aria2.session file if it does not exist
+if [ ! -f /data/aria2.session ]; then
+    touch /data/aria2.session
+fi
 if [[ $RPC_SECURE == "false" || -z $RPC_SECURE ]]; then
-    exec /opt/aria2/bin/aria2c \
-        --conf-path=/opt/aria2/aria2.conf \
+    exec /app/aria2c \
+        --conf-path=/etc/aria2/aria2.conf \
         --rpc-listen-port=${RPC_LISTEN_PORT} \
         --rpc-secret=${RPC_SECRET}
 else
-    exec /opt/aria2/bin/aria2c \
-        --conf-path=/opt/aria2/aria2.conf \
+    exec /app/aria2c \
+        --conf-path=/etc/aria2/aria2.conf \
         --rpc-listen-port=${RPC_LISTEN_PORT} \
         --rpc-secret=${RPC_SECRET} \
         --rpc-secure=${RPC_SECURE} \

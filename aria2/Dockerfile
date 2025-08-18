@@ -18,10 +18,7 @@ RUN tar -xzf /tmp/aria2-${ARIA2_VERSION}.tar.gz -C /tmp
 RUN cd /tmp/aria2-${ARIA2_VERSION} && \
     ./configure --prefix=/opt/aria2 --with-openssl --without-gnutls --without-libnettle --without-libgmp --without-libexpat --without-libssh2 --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt' && \
     make -j$(nproc) && \
-    make install && \
-    mkdir -p /opt/aria2/downloads && \
-    touch /opt/aria2/aria2.session && \
-    chmod +x /opt/aria2/bin/aria2c
+    make install
 
 FROM alpine:edge
 
@@ -49,10 +46,11 @@ EXPOSE 6800
 RUN addgroup -g 1001 aria2 && \
     adduser -D -u 1001 -G aria2 aria2
 USER 1001:1001
-COPY --from=build --chown=1001:1001 /opt/aria2 /opt/aria2
-COPY --chown=1001:1001 ./aria2.conf /opt/aria2/aria2.conf
+WORKDIR /app
+COPY --from=build --chown=1001:1001 --chmod=+x /opt/aria2/bin/aria2c ./aria2c
+WORKDIR /etc/aria2
+COPY --chown=1001:1001 ./aria2.conf ./aria2.conf
 COPY --chown=1001:1001  --chmod=+x ./entrypoint.sh /entrypoint.sh
-RUN mkdir -p /opt/aria2/downloads && \
-    touch /opt/aria2/aria2.session && \
-    chmod +x /opt/aria2/bin/aria2c
+VOLUME ["/data"]
+WORKDIR /data
 ENTRYPOINT ["/entrypoint.sh"]
