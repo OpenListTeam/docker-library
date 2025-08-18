@@ -1,0 +1,224 @@
+name: Build Base Docker Image
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: 'Docker image name'
+        required: false
+        default: 'openlist-base-image'
+  schedule:
+    - cron: '0 20 * * *' # 每天UTC时间20点，即北京时间4点
+
+env:
+  IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-base-image' }}
+  DOCKERHUB_ORG_NAME: ${{ vars.DOCKERHUB_ORG_NAME || 'openlistteam' }}
+  GHCR_ORG_NAME: ${{ vars.GHCR_ORG_NAME || 'openlistteam' }}
+  GHCR_REGISTRY: ghcr.io
+  RELEASE_PLATFORMS: 'linux/amd64,linux/arm64,linux/arm/v7,linux/386,linux/arm/v6,linux/ppc64le,linux/riscv64'
+  LOONG64_PLATFORM: 'linux/loong64'
+
+permissions:
+  packages: write
+
+jobs:
+  # 构建除龙芯外的所有架构
+  build-base-image:
+    name: Build Base Docker Image (Multi-arch)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: ["base", "ffmpeg", "aria2", "aio"]
+        include:
+          - image: "base"
+            build_arg: ""
+          - image: "ffmpeg"
+            build_arg: "INSTALL_FFMPEG=true"
+          - image: "aria2"
+            build_arg: "INSTALL_ARIA2=true"
+          - image: "aio"
+            build_arg: "INSTALL_FFMPEG=true\nINSTALL_ARIA2=true"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image (Multi-arch)
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: ./base
+          file: ./base/Dockerfile
+          push: true
+          pull: true
+          no-cache: true
+          build-args: ${{ matrix.build_arg }}
+          tags: |
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
+          platforms: ${{ env.RELEASE_PLATFORMS }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests-${{ matrix.image }}
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests-${{ matrix.image }}/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.image }}-multiarch
+          path: ${{ runner.temp }}/digests-${{ matrix.image }}/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # 单独构建龙芯架构
+  build-loong64:
+    name: Build Base Docker Image (LoongArch64)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: ["base", "ffmpeg", "aria2", "aio"]
+        include:
+          - image: "base"
+            build_arg: ""
+          - image: "ffmpeg"
+            build_arg: "INSTALL_FFMPEG=true"
+          - image: "aria2"
+            build_arg: "INSTALL_ARIA2=true"
+          - image: "aio"
+            build_arg: "INSTALL_FFMPEG=true\nINSTALL_ARIA2=true"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_ORG_NAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image (LoongArch64)
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: ./base
+          file: ./base/Dockerfile.loong64
+          push: true
+          pull: true
+          no-cache: true
+          build-args: ${{ matrix.build_arg }}
+          tags: |
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
+          platforms: ${{ env.LOONG64_PLATFORM }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests-${{ matrix.image }}
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests-${{ matrix.image }}/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.image }}-loong64
+          path: ${{ runner.temp }}/digests-${{ matrix.image }}/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # 合并所有架构的manifest
+  merge:
+    name: Merge ${{ matrix.image }} manifests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: ["base", "ffmpeg", "aria2", "aio"]
+    needs:
+      - build-base-image
+      - build-loong64
+    steps:
+      - name: Download digests (Multi-arch)
+        uses: actions/download-artifact@v4
+        with:
+          name: digests-${{ matrix.image }}-multiarch
+          path: ${{ runner.temp }}/digests-${{ matrix.image }}
+
+      - name: Download digests (LoongArch64)
+        uses: actions/download-artifact@v4
+        with:
+          name: digests-${{ matrix.image }}-loong64
+          path: ${{ runner.temp }}/digests-${{ matrix.image }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_ORG_NAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests-${{ matrix.image }}
+        run: |
+          echo "🔍 Available digests for ${{ matrix.image }}:"
+          ls -la
+          
+          # Create manifest for DockerHub
+          echo "📦 Creating DockerHub manifest for ${{ matrix.image }}..."
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }} \
+            $(printf '${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          
+          # Create manifest for GHCR
+          echo "📦 Creating GHCR manifest for ${{ matrix.image }}..."
+          docker buildx imagetools create \
+            -t ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }} \
+            $(printf '${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          echo "🔍 Inspecting DockerHub image..."
+          docker buildx imagetools inspect ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
+          echo "🔍 Inspecting GHCR image..."
+          docker buildx imagetools inspect ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.image }}
