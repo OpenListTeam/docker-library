@@ -1,4 +1,4 @@
-name: Build Base Docker Image
+name: Build Aria2 Docker Image
 on:
   workflow_dispatch:
     inputs:
