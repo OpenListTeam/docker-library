@@ -57,7 +57,7 @@ jobs:
           # - name: linux-riscv64
           #   platforms: linux/riscv64
           #   dockerfile: ./aria2/Dockerfile
-           - name: linux-loong64
+          - name: linux-loong64
             platforms: linux/loong64
             dockerfile: ./aria2/Dockerfile.loong64
 
