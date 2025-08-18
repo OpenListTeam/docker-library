@@ -1,4 +1,4 @@
-FROM alpine:edge AS build
+FROM ghcr.io/loong64/alpine:edge AS build
 ARG ARIA2_VERSION=1.37.0
 LABEL org.opencontainers.image.authors="The OpenList Team" \
     org.opencontainers.image.base.name="docker.io/openlistteam/openlist-aria2-standalone:${ARIA2_VERSION}" \
@@ -20,7 +20,7 @@ RUN cd /tmp/aria2-${ARIA2_VERSION} && \
     make -j$(nproc) && \
     make install
 
-FROM alpine:edge
+FROM ghcr.io/loong64/alpine:edge
 
 LABEL org.opencontainers.image.authors="The OpenList Team" \
     org.opencontainers.image.base.name="docker.io/openlistteam/openlist-aria2-standalone:${ARIA2_VERSION}" \
