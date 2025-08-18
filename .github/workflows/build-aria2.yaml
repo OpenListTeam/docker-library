@@ -96,8 +96,8 @@ jobs:
           build-args: |
             ARIA2_VERSION=${{ env.ARIA2_VERSION }}
           tags: |
-            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.name }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}:${{ matrix.name }}
+            ${{ env.DOCKERHUB_ORG_NAME }}/${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}
           platforms: ${{ matrix.platforms }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
 
