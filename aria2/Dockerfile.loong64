@@ -39,8 +39,8 @@ RUN apk add --no-cache ca-certificates zlib sqlite-libs libxml2 c-ares libstdc++
 ENV RPC_LISTEN_PORT=6800 \
     RPC_SECRET=123456 \
     RPC_SECURE=false \
-    RPC_CERTIFICATE=/opt/aria2/aria2.crt \
-    RPC_PRIVATE_KEY=/opt/aria2/aria2.key
+    RPC_CERTIFICATE=/data/aria2.crt \
+    RPC_PRIVATE_KEY=/data/aria2.key
 
 EXPOSE 6800
 RUN addgroup -g 1001 aria2 && \
