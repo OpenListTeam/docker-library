@@ -11,7 +11,7 @@ on:
         required: false
         default: '1.37.0'
 env:
-  IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-base-image' }}
+  IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-aria2' }}
   DOCKERHUB_ORG_NAME: ${{ vars.DOCKERHUB_ORG_NAME || 'openlistteam' }}
   GHCR_ORG_NAME: ${{ vars.GHCR_ORG_NAME || 'openlistteam' }}
   GHCR_REGISTRY: ghcr.io
@@ -24,8 +24,8 @@ permissions:
 
 jobs:
   # 构建除龙芯外的所有架构
-  build-base-image:
-    name: Build Base Docker Image (Multi-arch)
+  build-aria2-image:
+    name: Build Aria2 Docker Image (Multi-arch)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -83,7 +83,7 @@ jobs:
 
   # 单独构建龙芯架构
   build-loong64:
-    name: Build Base Docker Image (LoongArch64)
+    name: Build Aria2 Docker Image (LoongArch64)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -144,7 +144,7 @@ jobs:
     name: Merge  manifests
     runs-on: ubuntu-latest
     needs:
-      - build-base-image
+      - build-aria2-image
       - build-loong64
     steps:
       - name: Download digests (Multi-arch)
