@@ -44,18 +44,16 @@ ENV RPC_LISTEN_PORT=6800 \
 
 EXPOSE 6800
 
-COPY --from=build /opt/aria2 /opt/aria2
-COPY ./aria2.conf /opt/aria2/aria2.conf
-COPY ./entrypoint.sh /entrypoint.sh
-
 RUN addgroup -g 1001 aria2 && \
     adduser -D -u 1001 -G aria2 aria2 && \
     mkdir -p /opt/aria2/downloads && \
     touch /opt/aria2/aria2.session && \
     chown -R aria2:aria2 /opt/aria2 && \
-    chmod -R 755 /opt/aria2 && \
-    chmod +x /opt/aria2/bin/aria2c && \
-    chmod +x /entrypoint.sh
+    chmod +x /opt/aria2/bin/aria2c
+    
+COPY --from=build --chown 1001:1001 /opt/aria2 /opt/aria2
+COPY --chown 1001:1001 ./aria2.conf /opt/aria2/aria2.conf
+COPY --chown 1001:1001  --chmod=+x ./entrypoint.sh /entrypoint.sh
 
 USER 1001:1001
 
