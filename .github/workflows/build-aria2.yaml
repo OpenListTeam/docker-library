@@ -184,12 +184,15 @@ jobs:
           # cp sub-digests to the ./digests-out
           # scan all subdirectories and copy files to ../digests-out
           cd ${{ runner.temp }}/digests
+          echo "ls -al"
+          ls -al
           echo "🔍 Scanning for subdirectories ..."
           find  . -mindepth 1 -maxdepth 1 -type d | while
           read dir; do
             echo "🔍 Processing directory: $dir"
             if [ -d "$dir" ]; then
-              cp "$dir"/* ../digests-out/
+              echo "📦 Copying files without dir from $dir to ../digests-out/"
+              find "$dir" -type f -exec cp {} ${{ runner.temp }}/digests-out/ 
             fi
           done
           cd ${{ runner.temp }}/digests-out
