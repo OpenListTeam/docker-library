@@ -66,6 +66,9 @@ jobs:
             dockerfile: ./aria2/Dockerfile.ci.loong64
 
     steps:
+      - uses: jirutka/setup-alpine@v1
+        with:
+          branch: v3.15
       - name: Checkout code
         uses: actions/checkout@v4
 
