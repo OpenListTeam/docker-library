@@ -107,8 +107,7 @@ jobs:
             echo "Please set ARIA2_VERSION environment variable."
             exit 1
           fi
-          sudo apt update
-          sudo apt install -y build-essential libssl-dev libxml2-dev libsqlite3-dev zlib1g-dev libc-ares-dev pkgconf wget
+          apk add --no-cache build-base openssl-dev ca-certificates wget libxml2-dev sqlite-dev zlib-dev c-ares-dev pkgconf
           mkdir -p aria2/build
           out_dir=$(pwd)/aria2/build
           echo "Output directory: $out_dir"
