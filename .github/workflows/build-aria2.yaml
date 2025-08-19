@@ -89,7 +89,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: aria2/build
-          key: ${{ runner.os }}-aria2-${{ env.ARIA2_VERSION }}-v1
+          key: ${{ matrix.name }}-aria2-${{ env.ARIA2_VERSION }}
 
       - name: build aria2 (if not cached)
         if: steps.cache-aria2.outputs.cache-hit != 'true'
