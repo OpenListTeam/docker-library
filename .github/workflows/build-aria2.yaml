@@ -98,7 +98,7 @@ jobs:
           path: aria2/build
           key: ${{ matrix.name }}-aria2-${{ env.ARIA2_VERSION }}
       - name: build aria2 (if not cached)
-        if: steps.cache-aria2.outputs.cache-hit != 'true' && env.REBUILD_ARIA2 == 'true'
+        if: env.REBUILD_ARIA2 == 'true' || steps.cache-aria2.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARIA2_VERSION: ${{ env.ARIA2_VERSION }}
