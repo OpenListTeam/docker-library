@@ -1,0 +1,56 @@
+FROM alpine:edge AS build
+ARG ARIA2_VERSION=1.37.0
+LABEL org.opencontainers.image.authors="The OpenList Team" \
+    org.opencontainers.image.base.name="docker.io/openlistteam/openlist-aria2-standalone:${ARIA2_VERSION}" \
+    org.opencontainers.image.description="Aria2 Standalone" \
+    org.opencontainers.image.documentation="https://hub.docker.com/openlistteam/openlist-aria2-standalone/" \
+    org.opencontainers.image.licenses="AGPL-3.0" \
+    org.opencontainers.image.ref.name="${ARIA2_VERSION}" \
+    org.opencontainers.image.source="https://github.com/OpenListTeam/docker-library" \
+    org.opencontainers.image.title="Aria2 Standalone" \
+    org.opencontainers.image.url="https://github.com/OpenListTeam/docker-library" \
+    org.opencontainers.image.vendor="The OpenList Team" \
+    org.opencontainers.image.version="${ARIA2_VERSION}"
+
+RUN apk add --no-cache build-base openssl-dev ca-certificates wget libxml2-dev sqlite-dev zlib-dev c-ares-dev pkgconf
+RUN wget -O /tmp/aria2-${ARIA2_VERSION}.tar.gz https://github.com/aria2/aria2/releases/download/release-${ARIA2_VERSION}/aria2-${ARIA2_VERSION}.tar.gz
+RUN tar -xzf /tmp/aria2-${ARIA2_VERSION}.tar.gz -C /tmp
+RUN cd /tmp/aria2-${ARIA2_VERSION} && \
+    ./configure --prefix=/opt/aria2 --with-openssl --without-gnutls --without-libnettle --without-libgmp --without-libexpat --without-libssh2 --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt' && \
+    make -j$(nproc) && \
+    make install
+
+FROM alpine:edge
+ARG ARIA2_VERSION=1.37.0
+LABEL org.opencontainers.image.authors="The OpenList Team" \
+    org.opencontainers.image.base.name="docker.io/openlistteam/openlist-aria2-standalone:${ARIA2_VERSION}" \
+    org.opencontainers.image.description="Aria2 Standalone" \
+    org.opencontainers.image.documentation="https://hub.docker.com/openlistteam/openlist-aria2-standalone/" \
+    org.opencontainers.image.licenses="AGPL-3.0" \
+    org.opencontainers.image.ref.name="${ARIA2_VERSION}" \
+    org.opencontainers.image.source="https://github.com/OpenListTeam/docker-library" \
+    org.opencontainers.image.title="Aria2 Standalone" \
+    org.opencontainers.image.url="https://github.com/OpenListTeam/docker-library" \
+    org.opencontainers.image.vendor="The OpenList Team" \
+    org.opencontainers.image.version="${ARIA2_VERSION}"
+
+RUN apk add --no-cache ca-certificates zlib sqlite-libs libxml2 c-ares libstdc++ libgcc
+
+ENV RPC_LISTEN_PORT=6800 \
+    RPC_SECRET=123456 \
+    RPC_SECURE=false \
+    RPC_CERTIFICATE=/data/aria2.crt \
+    RPC_PRIVATE_KEY=/data/aria2.key
+
+EXPOSE 6800
+RUN addgroup -g 1001 aria2 && \
+    adduser -D -u 1001 -G aria2 aria2
+USER 1001:1001
+WORKDIR /app
+COPY --from=build --chown=1001:1001 --chmod=+x /opt/aria2/bin/aria2c ./aria2c
+WORKDIR /etc/aria2
+COPY --chown=1001:1001 ./aria2.conf ./aria2.conf
+COPY --chown=1001:1001  --chmod=+x ./entrypoint.sh /entrypoint.sh
+VOLUME ["/data"]
+WORKDIR /data
+ENTRYPOINT ["/entrypoint.sh"]
