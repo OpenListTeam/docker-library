@@ -178,11 +178,21 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Create manifest list and push
-        working-directory: ${{ runner.temp }}/digests
+        working-directory: ${{ runner.temp }}
         run: |
-          echo "🔍 Available digests:"
-          ls -la
-          
+          mkdir -p ./digests-out
+          # cp sub-digests to the ./digests-out
+          # scan all subdirectories and copy files to ../digests-out
+          cd ${{ runner.temp }}/digests
+          echo "🔍 Scanning for subdirectories ..."
+          find  . -mindepth 1 -maxdepth 1 -type d | while
+          read dir; do
+            echo "🔍 Processing directory: $dir"
+            if [ -d "$dir" ]; then
+              cp "$dir"/* ../digests-out/
+            fi
+          done
+          cd ${{ runner.temp }}/digests-out
           # Create manifest for DockerHub
           echo "📦 Creating DockerHub manifest ..."
           docker buildx imagetools create \
