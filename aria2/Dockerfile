@@ -21,7 +21,7 @@ RUN cd /tmp/aria2-${ARIA2_VERSION} && \
     make install
 
 FROM alpine:edge
-
+ARG ARIA2_VERSION=1.37.0
 LABEL org.opencontainers.image.authors="The OpenList Team" \
     org.opencontainers.image.base.name="docker.io/openlistteam/openlist-aria2-standalone:${ARIA2_VERSION}" \
     org.opencontainers.image.description="Aria2 Standalone" \
