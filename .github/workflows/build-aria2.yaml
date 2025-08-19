@@ -10,26 +10,21 @@ on:
         description: 'Aria2 version'
         required: false
         default: '1.37.0'
-      DOCKERHUB_ORG_NAME:
+      dockerhub_org_name:
         description: 'DockerHub organization name'
         required: false
         default: ''
-      GHCR_ORG_NAME:
+      ghcr_org_name:
         description: 'GitHub Container Registry organization name'
         required: false
         default: ''
-      REBUILD_ARIA2:
-        description: 'Rebuild Aria2'
-        required: false
-        default: 'false'
 
 env:
   IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-aria2' }}
   DOCKERHUB_ORG_NAME: ${{ github.event.inputs.dockerhub_org_name || vars.DOCKERHUB_ORG_NAME || github.repository_owner }}
-  GHCR_ORG_NAME: ${{ github.event.inputs.ghcr_org_name || vars.DOCKERHUB_ORG_NAME || github.repository_owner }}
+  GHCR_ORG_NAME: ${{ github.event.inputs.ghcr_org_name || vars.GHCR_ORG_NAME || github.repository_owner }}
   GHCR_REGISTRY: ghcr.io
   ARIA2_VERSION: ${{ github.event.inputs.aria2_version || '1.37.0' }}
-  REBUILD_ARIA2: ${{ github.event.inputs.rebuild_aria2 || 'false' }}
 
 permissions:
   packages: write
