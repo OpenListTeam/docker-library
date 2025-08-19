@@ -187,7 +187,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: digests-${{ matrix.name }}
-          path: ${{ runner.temp }}/digests
+          path: ${{ runner.temp }}/digests-${{ matrix.name }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
