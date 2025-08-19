@@ -25,7 +25,7 @@ RUN addgroup -g 1001 aria2 && \
     adduser -D -u 1001 -G aria2 aria2
 USER 1001:1001
 WORKDIR /app
-COPY --chown=1001:1001 --chmod=+x aria2/build/bin/aria2c ./aria2c
+COPY --chown=1001:1001 --chmod=+x build/bin/aria2c ./aria2c
 WORKDIR /etc/aria2
 COPY --chown=1001:1001 ./aria2.conf ./aria2.conf
 COPY --chown=1001:1001  --chmod=+x ./entrypoint.sh /entrypoint.sh
