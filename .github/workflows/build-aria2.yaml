@@ -193,7 +193,7 @@ jobs:
             echo "🔍 Processing directory: $dir"
             if [ -d "$dir" ]; then
               echo "📦 Copying files without dir from $dir to ../digests-out/"
-              find "$dir" -type f -exec cp {} ${{ runner.temp }}/digests-out/ 
+              find "$dir" -type f -exec cp {} ${{ runner.temp }}/digests-out/ \;
             fi
           done
           cd ${{ runner.temp }}/digests-out
