@@ -102,7 +102,7 @@ jobs:
             exit 1
           fi
           sudo apt update
-          sudo apt install -y build-essential libssl-dev libxml2-dev libsqlite3-dev zlib1-dev libc-ares-dev pkgconf wget
+          sudo apt install -y build-essential libssl-dev libxml2-dev libsqlite3-dev zlib1g-dev libc-ares-dev pkgconf wget
           mkdir -p aria2/build
           wget -O /tmp/aria2-${ARIA2_VERSION}.tar.gz
           cd /tmp
