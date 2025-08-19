@@ -149,7 +149,7 @@ jobs:
           echo "ls -al"
           ls -al
           echo "🔍 Scanning for subdirectories ..."
-          find  . -mindepth 1 -maxdepth 1 -type d | while
+          find . -mindepth 1 -maxdepth 1 -type d | while
           read dir; do
             echo "🔍 Processing directory: $dir"
             if [ -d "$dir" ]; then

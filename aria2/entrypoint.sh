@@ -3,7 +3,7 @@
 if [ ! -f /data/aria2.session ]; then
     touch /data/aria2.session
 fi
-# check RPC_SECURE variable ,must be true or false or empty
+# check RPC_SECURE variable, must be true or false or empty
 if [ -z "$RPC_SECURE" ]; then
     RPC_SECURE="false"
 fi
@@ -13,7 +13,7 @@ if [ "$RPC_SECURE" != "true" ] && [ "$RPC_SECURE" != "false" ]; then
     exit 1
 fi
 
-if [ "$RPC_SECURE" = "false" ] ; then
+if [ "$RPC_SECURE" = "false" ]; then
     exec /app/aria2c \
         --conf-path=/etc/aria2/aria2.conf \
         --rpc-listen-port=${RPC_LISTEN_PORT} \
