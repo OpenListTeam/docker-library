@@ -38,28 +38,28 @@ jobs:
         include:
           - name: linux-amd64
             platforms: linux/amd64
-            dockerfile: ./aria2/Dockerfile
+            dockerfile: ./aria2/Dockerfile.ci
           # - name: linux-arm64
           #   platforms: linux/arm64
-          #   dockerfile: ./aria2/Dockerfile
+          #   dockerfile: ./aria2/Dockerfile.ci
           # - name: linux-arm-v7
           #   platforms: linux/arm/v7
-          #   dockerfile: ./aria2/Dockerfile
+          #   dockerfile: ./aria2/Dockerfile.ci
           # - name: linux-386
           #   platforms: linux/386
-          #   dockerfile: ./aria2/Dockerfile
+          #   dockerfile: ./aria2/Dockerfile.ci
           # - name: linux-arm-v6
           #   platforms: linux/arm/v6
-          #   dockerfile: ./aria2/Dockerfile
+          #   dockerfile: ./aria2/Dockerfile.ci
           # - name: linux-ppc64le
           #   platforms: linux/ppc64le
-          #   dockerfile: ./aria2/Dockerfile
+          #   dockerfile: ./aria2/Dockerfile.ci
           # - name: linux-riscv64
           #   platforms: linux/riscv64
-          #   dockerfile: ./aria2/Dockerfile
+          #   dockerfile: ./aria2/Dockerfile.ci
           # - name: linux-loong64
           #   platforms: linux/loong64
-          #   dockerfile: ./aria2/Dockerfile.loong64
+          #   dockerfile: ./aria2/Dockerfile.ci.loong64
 
     steps:
       - name: Checkout code
@@ -83,6 +83,19 @@ jobs:
         with:
           username: ${{ env.DOCKERHUB_ORG_NAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # cache the aria2 build
+      - name: Cache aria2 build
+        id: cache-aria2
+        uses: actions/cache@v4
+        with:
+          path: aria2/build
+          key: ${{ runner.os }}-aria2-${{ env.ARIA2_VERSION }}-v1
+
+      - name: build aria2 (if not cached)
+        if: steps.cache-aria2.outputs.cache-hit != 'true'
+        run: bash ./aria2/build-aria2.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image (${{ matrix.name }})
         uses: docker/build-push-action@v6
