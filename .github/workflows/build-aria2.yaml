@@ -205,7 +205,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Create manifest list and push (DockerHub)
-        working-directory: ${{ runner.temp }}/digests
+        working-directory: ${{ runner.temp }}/digests-${{ matrix.image }}
         run: |
           echo "🔍 Available digests :"
           ls -la
@@ -220,7 +220,7 @@ jobs:
             $refs
 
       - name: Create manifest list and push (GHCR)
-        working-directory: ${{ runner.temp }}/digests
+        working-directory: ${{ runner.temp }}/digests-${{ matrix.image }}
         run: |
           digests=$(find . -name 'digest-*' -exec cat {} \; | grep "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_ORG_NAME }}/${{ env.IMAGE_NAME }}" | sed 's|^.*@||')
           refs=""
