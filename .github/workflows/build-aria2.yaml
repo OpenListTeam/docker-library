@@ -99,6 +99,7 @@ jobs:
           path: aria2/build
           key: ${{ matrix.name }}-aria2-${{ env.ARIA2_VERSION }}
       - name: build aria2 (if not cached)
+        shell: alpine.sh --root {0}
         if: env.REBUILD_ARIA2 == 'true' || steps.cache-aria2.outputs.cache-hit != 'true'
         env:
           REBUILD_ARIA2: ${{ github.event.inputs.rebuild_aria2 || 'false' }}
