@@ -104,7 +104,7 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential libssl-dev libxml2-dev libsqlite3-dev zlib1g-dev libc-ares-dev pkgconf wget
           mkdir -p aria2/build
-          wget -O /tmp/aria2-${ARIA2_VERSION}.tar.gz
+          wget -O /tmp/aria2-${ARIA2_VERSION}.tar.gz https://github.com/aria2/aria2/releases/download/release-${ARIA2_VERSION}/aria2-${ARIA2_VERSION}.tar.gz
           cd /tmp
           tar -xzf /tmp/aria2-${ARIA2_VERSION}.tar.gz
           cd /tmp/aria2-${ARIA2_VERSION}
