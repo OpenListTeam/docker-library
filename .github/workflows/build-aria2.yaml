@@ -29,6 +29,7 @@ env:
   GHCR_ORG_NAME: ${{ github.event.inputs.ghcr_org_name || vars.DOCKERHUB_ORG_NAME || github.repository_owner }}
   GHCR_REGISTRY: ghcr.io
   ARIA2_VERSION: ${{ github.event.inputs.aria2_version || '1.37.0' }}
+  REBUILD_ARIA2: ${{ github.event.inputs.rebuild_aria2 || 'false' }}
 
 permissions:
   packages: write
@@ -100,6 +101,7 @@ jobs:
       - name: build aria2 (if not cached)
         if: env.REBUILD_ARIA2 == 'true' || steps.cache-aria2.outputs.cache-hit != 'true'
         env:
+          REBUILD_ARIA2: ${{ github.event.inputs.rebuild_aria2 || 'false' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARIA2_VERSION: ${{ env.ARIA2_VERSION }}
         run: |
