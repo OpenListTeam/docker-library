@@ -108,7 +108,7 @@ jobs:
           cd /tmp
           tar -xzf /tmp/aria2-${ARIA2_VERSION}.tar.gz
           cd /tmp/aria2-${ARIA2_VERSION}
-          ./configure --prefix=aria2/build --with-openssl --without-gnutls --without-libnettle --without-libgmp --without-libexpat --without-libssh2 --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt'
+          ./configure --prefix=$(pwd)/aria2/build --with-openssl --without-gnutls --without-libnettle --without-libgmp --without-libexpat --without-libssh2 --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt'
           make -j$(nproc)
           make install
           echo "Aria2 version $(aria2/build/bin/aria2c --version | head -n 1) "
