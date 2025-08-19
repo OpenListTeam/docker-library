@@ -18,6 +18,10 @@ on:
         description: 'GitHub Container Registry organization name'
         required: false
         default: ''
+      REBUILD_ARIA2:
+        description: 'Rebuild Aria2'
+        required: false
+        default: 'false'
 
 env:
   IMAGE_NAME: ${{ github.event.inputs.image_name || 'openlist-aria2' }}
@@ -90,9 +94,8 @@ jobs:
         with:
           path: aria2/build
           key: ${{ matrix.name }}-aria2-${{ env.ARIA2_VERSION }}
-
       - name: build aria2 (if not cached)
-        if: steps.cache-aria2.outputs.cache-hit != 'true'
+        if: steps.cache-aria2.outputs.cache-hit != 'true' && env.REBUILD_ARIA2 == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARIA2_VERSION: ${{ env.ARIA2_VERSION }}
@@ -120,7 +123,15 @@ jobs:
           echo "ls -la $out_dir/bin"
           ls -la $out_dir/bin
           rm -rf /tmp/aria2-${ARIA2_VERSION} /tmp/aria2-${ARIA2_VERSION}.tar.gz
-
+      - name: Check if aria2 build exists
+        run: |
+          if [ -d "aria2/build" ]; then
+            echo "Aria2 build exists"
+            ls -la aria2/build
+            echo "Version: $(aria2/build/bin/aria2c --version | head -n 1)"
+          else
+            echo "Aria2 build does not exist"
+          fi
       - name: Build and push Docker image (${{ matrix.name }})
         uses: docker/build-push-action@v6
         id: build
