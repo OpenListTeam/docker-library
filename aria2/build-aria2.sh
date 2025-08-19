@@ -23,5 +23,5 @@ cd /tmp/aria2-${ARIA2_VERSION}
 ./configure --prefix=aria2/build --with-openssl --without-gnutls --without-libnettle --without-libgmp --without-libexpat --without-libssh2 --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt'
 make -j$(nproc)
 make install
-echo "Aria2 version $(/opt/aria2/bin/aria2c --version | head -n 1) installed to /opt/aria2"
+echo "Aria2 version $(aria2/build/bin/aria2c --version | head -n 1) "
 rm -rf /tmp/aria2-${ARIA2_VERSION} /tmp/aria2-${ARIA2_VERSION}.tar.gz
