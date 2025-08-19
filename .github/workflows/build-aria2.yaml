@@ -39,9 +39,9 @@ jobs:
           - name: linux-amd64
             platforms: linux/amd64
             dockerfile: ./aria2/Dockerfile
-          # - name: linux-arm64
-          #   platforms: linux/arm64
-          #   dockerfile: ./aria2/Dockerfile
+          - name: linux-arm64
+            platforms: linux/arm64
+            dockerfile: ./aria2/Dockerfile
           # - name: linux-arm-v7
           #   platforms: linux/arm/v7
           #   dockerfile: ./aria2/Dockerfile
@@ -57,9 +57,9 @@ jobs:
           # - name: linux-riscv64
           #   platforms: linux/riscv64
           #   dockerfile: ./aria2/Dockerfile
-          - name: linux-loong64
-            platforms: linux/loong64
-            dockerfile: ./aria2/Dockerfile.loong64
+          # - name: linux-loong64
+          #   platforms: linux/loong64
+          #   dockerfile: ./aria2/Dockerfile.loong64
 
     steps:
       - name: Checkout code
