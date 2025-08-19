@@ -43,28 +43,28 @@ jobs:
         include:
           - name: linux-amd64
             platforms: linux/amd64
-            dockerfile: ./aria2/Dockerfile.ci
+            dockerfile: ./aria2/Dockerfile
           - name: linux-arm64
             platforms: linux/arm64
-            dockerfile: ./aria2/Dockerfile.ci
+            dockerfile: ./aria2/Dockerfile
           - name: linux-arm-v7
             platforms: linux/arm/v7
-            dockerfile: ./aria2/Dockerfile.ci
+            dockerfile: ./aria2/Dockerfile
           - name: linux-386
             platforms: linux/386
-            dockerfile: ./aria2/Dockerfile.ci
+            dockerfile: ./aria2/Dockerfile
           - name: linux-arm-v6
             platforms: linux/arm/v6
-            dockerfile: ./aria2/Dockerfile.ci
+            dockerfile: ./aria2/Dockerfile
           - name: linux-ppc64le
             platforms: linux/ppc64le
-            dockerfile: ./aria2/Dockerfile.ci
+            dockerfile: ./aria2/Dockerfile
           - name: linux-riscv64
             platforms: linux/riscv64
-            dockerfile: ./aria2/Dockerfile.ci
+            dockerfile: ./aria2/Dockerfile
           - name: linux-loong64
             platforms: linux/loong64
-            dockerfile: ./aria2/Dockerfile.ci.loong64
+            dockerfile: ./aria2/Dockerfile.loong64
 
     steps:
       - uses: jirutka/setup-alpine@v1
@@ -91,52 +91,6 @@ jobs:
         with:
           username: ${{ env.DOCKERHUB_ORG_NAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # cache the aria2 build
-      - name: Cache aria2 build
-        id: cache-aria2
-        uses: actions/cache@v4
-        with:
-          path: aria2/build
-          key: ${{ matrix.name }}-aria2-${{ env.ARIA2_VERSION }}
-      - name: build aria2 (if not cached)
-        shell: alpine.sh --root {0}
-        if: env.REBUILD_ARIA2 == 'true' || steps.cache-aria2.outputs.cache-hit != 'true'
-        env:
-          REBUILD_ARIA2: ${{ github.event.inputs.rebuild_aria2 || 'false' }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARIA2_VERSION: ${{ env.ARIA2_VERSION }}
-        run: |
-          if [ -z "$ARIA2_VERSION" ]; then
-            echo "Please set ARIA2_VERSION environment variable."
-            exit 1
-          fi
-          apk add --no-cache build-base openssl-dev ca-certificates wget libxml2-dev sqlite-dev zlib-dev c-ares-dev pkgconf
-          mkdir -p aria2/build
-          out_dir=$(pwd)/aria2/build
-          echo "Output directory: $out_dir"
-          wget -O /tmp/aria2-${ARIA2_VERSION}.tar.gz https://github.com/aria2/aria2/releases/download/release-${ARIA2_VERSION}/aria2-${ARIA2_VERSION}.tar.gz
-          cd /tmp
-          tar -xzf /tmp/aria2-${ARIA2_VERSION}.tar.gz
-          cd /tmp/aria2-${ARIA2_VERSION}
-          ./configure --prefix=${out_dir} --with-openssl --without-gnutls --without-libnettle --without-libgmp --without-libexpat --without-libssh2 --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt'
-          make -j$(nproc)
-          make install
-          echo "Aria2 version $(aria2/build/bin/aria2c --version | head -n 1) "
-          echo "Aria2 build directory: $out_dir"
-          echo "ls -la $out_dir"
-          ls -la $out_dir
-          echo "ls -la $out_dir/bin"
-          ls -la $out_dir/bin
-          rm -rf /tmp/aria2-${ARIA2_VERSION} /tmp/aria2-${ARIA2_VERSION}.tar.gz
-      - name: Check if aria2 build exists
-        run: |
-          if [ -d "aria2/build" ]; then
-            echo "Aria2 build exists"
-            ls -la aria2/build
-            echo "Version: $(aria2/build/bin/aria2c --version | head -n 1)"
-          else
-            echo "Aria2 build does not exist"
-          fi
       - name: Build and push Docker image (${{ matrix.name }})
         uses: docker/build-push-action@v6
         id: build
@@ -167,7 +121,6 @@ jobs:
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
-
   merge:
     name: Merge manifests
     runs-on: ubuntu-latest
