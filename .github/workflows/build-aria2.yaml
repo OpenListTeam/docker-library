@@ -104,14 +104,17 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential libssl-dev libxml2-dev libsqlite3-dev zlib1g-dev libc-ares-dev pkgconf wget
           mkdir -p aria2/build
+          out_dir=$(pwd)/aria2/build
+          echo "Output directory: $out_dir"
           wget -O /tmp/aria2-${ARIA2_VERSION}.tar.gz https://github.com/aria2/aria2/releases/download/release-${ARIA2_VERSION}/aria2-${ARIA2_VERSION}.tar.gz
           cd /tmp
           tar -xzf /tmp/aria2-${ARIA2_VERSION}.tar.gz
           cd /tmp/aria2-${ARIA2_VERSION}
-          ./configure --prefix=$(pwd)/aria2/build --with-openssl --without-gnutls --without-libnettle --without-libgmp --without-libexpat --without-libssh2 --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt'
+          ./configure --prefix=${out_dir} --with-openssl --without-gnutls --without-libnettle --without-libgmp --without-libexpat --without-libssh2 --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt'
           make -j$(nproc)
           make install
           echo "Aria2 version $(aria2/build/bin/aria2c --version | head -n 1) "
+
           rm -rf /tmp/aria2-${ARIA2_VERSION} /tmp/aria2-${ARIA2_VERSION}.tar.gz
 
       - name: Build and push Docker image (${{ matrix.name }})
